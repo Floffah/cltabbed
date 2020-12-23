@@ -23,12 +23,13 @@ export default class Screen {
         this.render();
 
         process.on("SIGINT", () => this.shutdown(false));
-        this.term.on("key", (a: string, b: string[], c: { isCharacter: boolean; codepoint: number; code: number | Buffer; }) => this.key(a,b,c));
+        this.term.on("key", (a: string, b: string[], c: { isCharacter: boolean; codepoint: number; code: number | Buffer; }) => this.key(a, b, c));
+        this.term.on("resize", (w: number, h: number) => this.resize(w, h));
         this.term.grabInput(true);
     }
 
-    key(name:string, matches: string[], data: {isCharacter:boolean,codepoint:number,code:number|Buffer}) {
-        if(name == "CTRL_C") {
+    key(name: string, matches: string[], data: { isCharacter: boolean, codepoint: number, code: number | Buffer }) {
+        if (name == "CTRL_C") {
             this.shutdown(false);
         } else {
             this.logline(name + " " + matches + " " + JSON.stringify(data));
@@ -36,19 +37,23 @@ export default class Screen {
         }
     }
 
-    shutdown(_forced:boolean) {
+    resize(_width: number, _height: number) {
+        this.render();
+    }
+
+    shutdown(_forced: boolean) {
         this.term.clear();
         process.exit();
     }
 
-    generateTabs():string {
+    generateTabs(): string {
         let tabs = " ";
 
-        for(let i=0;i<this.state.tabs.length;i++) {
+        for (let i = 0; i < this.state.tabs.length; i++) {
             let tab = this.state.tabs[i];
             let add = "";
-            if(i !== this.state.tab) {
-                if(i.toString().endsWithOne(["1","3","5","7","9"])) {
+            if (i !== this.state.tab) {
+                if (i.toString().endsWithOne(["1", "3", "5", "7", "9"])) {
                     add += "^:^K"
                 } else {
                     add += "^:"
@@ -56,7 +61,7 @@ export default class Screen {
             } else {
                 add += "^W^#^K"
             }
-            if(tab.type === "welcome") {
+            if (tab.type === "welcome") {
                 add += "Welcome";
             } else {
                 add += tab.proc;
@@ -67,10 +72,10 @@ export default class Screen {
         return tabs;
     }
 
-    generateSep():string {
+    generateSep(): string {
         let sep = "";
 
-        for(let i=0;i<this.term.width;i++) {
+        for (let i = 0; i < this.term.width; i++) {
             sep += "-";
         }
 
@@ -91,44 +96,63 @@ export default class Screen {
 
     logtab(tab: number, ...message: string[]) {
         let logs = this.state.tabs[tab].logs;
-        let log = logs[logs.length-1];
+        let log = logs[logs.length - 1];
         log += message.join(" ");
-        this.state.tabs[tab].logs[logs.length-1] = log;
+        this.state.tabs[tab].logs[logs.length - 1] = log;
     }
 
 
-    render(clear?: boolean) {
-        if(clear) {
+    render(clear?: boolean, cursor?: boolean) {
+        if (clear) {
             this.term.clear();
         }
 
         let active = this.state.tabs[this.state.tab];
         this.term.windowTitle(("title" in active ? active.title : "Welcome") + " @ cltabbed");
 
-        let lines:string[] = [];
+        let lines: string[] = [];
 
         lines[0] = this.generateTabs();
         lines[1] = this.generateSep();
 
-        let loglines:string[] = [];
-        for(let i=0;i<(this.term.height-2);i++) {
+        let compensate = 0;
+        let loglines: string[] = [];
+        for (let i = 0; i < (this.term.height - 2); i++) {
             let i2 = (this.state.tabs[this.state.tab].logs.length - 1) - i;
-            if(!!this.state.tabs[this.state.tab].logs[i2]) {
-                loglines.push(this.state.tabs[this.state.tab].logs[i2]);
+            if (!!this.state.tabs[this.state.tab].logs[i2]) {
+                let clines: string[] = [];
+                let line = this.state.tabs[this.state.tab].logs[i2];
+
+                if (line.length > this.term.width) {
+                    let amt = line.length / this.term.width;
+                    for (let i = 0; i < amt; i++) {
+                        clines.push(line.substr(i * this.term.width, this.term.width));
+                    }
+                    compensate += amt - 1;
+                } else {
+                    clines.push(line);
+                }
+
+                clines.reverse();
+                loglines.push(...clines);
             } else {
                 break;
             }
         }
         loglines.reverse();
-        lines = [...lines,...loglines];
+        lines = [...lines, ...loglines];
 
-        if(lines.length < this.term.height) {
-            let diff = this.term.height - lines.length;
-            for(let i = 0;i<diff;i++) {
+        this.term.hideCursor();
+        if (cursor) {
+            lines[lines.length - 1] += "^#^W ^:"
+        }
+
+        if (lines.length < this.term.height) {
+            let diff = (this.term.height - lines.length) - compensate;
+            for (let i = 0; i < diff; i++) {
                 lines.push("");
             }
         }
-
         this.term("\n" + lines.join("\n"));
     }
 }
