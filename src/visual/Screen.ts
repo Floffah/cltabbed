@@ -15,7 +15,7 @@ export default class Screen {
         tab: 0,
         tabs: [{
             type: "welcome",
-            logs: ["^bWelcome!^:", "Keybinds:", "CTRL_C - exit", "CTRL_N - next tab", "CTRL_P - previous tab"]
+            logs: ["^bWelcome!^:", "Keybinds:", "CTRL_C - exit", "CTRL_N/CTRL_RIGHT - next tab", "CTRL_P/CTRL_LEFT - previous tab"]
         }]
     };
 
@@ -29,8 +29,18 @@ export default class Screen {
     }
 
     key(name: string, matches: string[], data: { isCharacter: boolean, codepoint: number, code: number | Buffer }) {
-        if (name == "CTRL_C") {
+        if (name === "CTRL_C") {
             this.shutdown(false);
+        } else if(name === "CTRL_N" || name === "CTRL_RIGHT") {
+            if(!!this.state.tabs[this.state.tab+1]) {
+                this.state.tab += 1;
+                this.render(true, false);
+            }
+        } else if(name === "CTRL_P" || name === "CTRL_LEFT") {
+            if(!!this.state.tabs[this.state.tab-1]) {
+                this.state.tab -= 1;
+                this.render(true, false);
+            }
         } else {
             this.logline(name + " " + matches + " " + JSON.stringify(data));
             this.render();
