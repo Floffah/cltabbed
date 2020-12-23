@@ -10,6 +10,7 @@
     "tabbed": "dist/App.js"
   },
   "dependencies": {
+    "node-pty": "^0.9.0",
     "terminal-kit": "^1.44.0"
   },
   "devDependencies": {
