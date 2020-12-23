@@ -15,7 +15,7 @@ export default class Screen {
         tab: 0,
         tabs: [{
             type: "welcome",
-            logs: ["^bWelcome!^:", "Keybinds:", "CTRL_C - exit", "CTRL_N/CTRL_RIGHT - next tab", "CTRL_P/CTRL_LEFT - previous tab"]
+            logs: ["^BWelcome!^:", "^CKeybinds:^:", "^CCTRL_C^ - exit", "^CCTRL_N/CTRL_RIGHT^ - next tab", "^CCTRL_P/CTRL_LEFT^ - previous tab", "^CCTRL_A^ - new tab"]
         }]
     };
 
@@ -28,7 +28,7 @@ export default class Screen {
         this.term.grabInput(true);
     }
 
-    key(name: string, matches: string[], data: { isCharacter: boolean, codepoint: number, code: number | Buffer }) {
+    key(name: string, _matches: string[], _data: { isCharacter: boolean, codepoint: number, code: number | Buffer }) {
         if (name === "CTRL_C") {
             this.shutdown(false);
         } else if(name === "CTRL_N" || name === "CTRL_RIGHT") {
@@ -41,9 +41,20 @@ export default class Screen {
                 this.state.tab -= 1;
                 this.render(true, false);
             }
-        } else {
-            this.logline(name + " " + matches + " " + JSON.stringify(data));
-            this.render();
+        } else if(name === "CTRL_A") {
+            this.newTab();
+        }
+    }
+
+    newTab() {
+        if(process.platform === "win32") {
+            this.state.tabs.push({
+                type: "proc",
+                title: "CMD",
+                proc: "cmd",
+                logs: ["^KStarting process..."]
+            });
+            this.render(true, false);
         }
     }
 
